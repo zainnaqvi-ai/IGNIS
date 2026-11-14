@@ -1,0 +1,25 @@
+# Historical interpretation
+
+## Original detections
+
+MODIS Terra/Aqua measures thermal anomalies at nominal 1 km resolution. VIIRS S-NPP I-band pixels have nominal 375 m resolution. Pixel centers can include industrial heat, offshore sources, volcanoes and vegetation burning. Repeated detections of a source are expected. FRP is instantaneous pixel-integrated radiative power in MW. Counts do not measure incidents, duration or burned area. Archive type is an inferred class. NRT type is unknown. All source classes remain in scope. Archive and NRT can differ in processing and latency.
+
+## Shared grid
+
+Layer A counts supplied rows before quality exclusions. For Layer B, require valid WGS84 coordinates, UTC day and HHMM, expected platform/instrument, and documented confidence domain. Use the nominal/high VIIRS classes and a declared MODIS confidence cutoff of 30 on its own numeric scale. This analyst policy does not equate the scales. Use original decimal coordinates to compute west/south-inclusive 0.02° bins anchored at (−180°, −90°). At the global maximum use the last cell. A north/south side is about 2.2 km. Its east/west width varies with latitude. The grid is neither equal-area nor a measurement of fire extent.
+
+Count retained observations within each (UTC day, cell, sensor). Count the MODIS-only, VIIRS-only and shared cell-days separately. Union counts each occupied cell once that day. Summing days preserves repeat activity across dates. Deduplication matches all shared measurement fields, including exact location, time, platform, scan, track, thermal bands, confidence, day/night and FRP. Exact within-product copies require matching version and type too. Across overlapping archive and NRT a matching standard record takes precedence. A location/time coincidence alone never removes a row. Raw counts retain copies. The grid mitigates repeat sampling, while orbit, resolution, obscuration, overpass time and persistent sources still affect the record.
+
+## Coverage and comparisons
+
+The readmes link to a generic FIRMS description. Request dates, exact requested footprints, overpass completeness, masks and cloud/smoke obscuration are unknown. Both products may have different effective footprints inside the pooled observed envelope. The first and last positive dates limit the interface, without verifying coverage between them. A silent day gets an unknown state. Pre-mission and post-mission S-NPP dates are unavailable. Edge dates/months/years and sensor transitions are marked. A zero retained count following raw detections indicates quality exclusion. A verified query zero would require independent request evidence. These inputs provide none.
+
+For each region, report paired positive grid months and years, then require independently documented, comparable month support for both instruments, at least six complete supported years and positive pairs across seasons. A comparison month also needs matching platform configuration and temporal support. If eligible, fit the median VIIRS/MODIS occupied-cell-day ratio on earlier years; hold out the last two whole years, compare mean absolute error with the unscaled MODIS baseline, report seasonal residuals and the training-ratio interquartile interval. Require lower overall error, no worse seasonal MAE, and a ratio IQR no larger than its median. These are explicit screening choices, not NASA calibration standards. Failure withholds an index. No coefficient transfers between regions. There is no fit to unverified months.
+
+Same-month anomaly assessment requires at least five independently supported, complete reference years in the same instrument era, excluding the target year. Compare to the median and midrank percentile. With unknown support the workstation instead plots recorded historical values with sample size, marks gaps and partial periods, ranks recorded peaks, and withholds anomaly claims. Calendar month/season comparisons can reflect changing sampling intensity. Seasons shown are northern meteorological seasons.
+
+## Sources
+
+- [NASA FIRMS MODIS attributes](https://firms.modaps.eosdis.nasa.gov/content/descriptions/FIRMS_MODIS_Firehotspots.html)
+- [NASA FIRMS VIIRS attributes and S-NPP mission dates](https://firms.modaps.eosdis.nasa.gov/content/descriptions/FIRMS_VIIRS_Firehotspots.html)
+- [FIRMS readme, attribution, known MODIS gaps and data disclaimer](https://firms.modaps.eosdis.nasa.gov/download/Readme.txt)

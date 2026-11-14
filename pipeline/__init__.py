@@ -1,0 +1,1 @@
+"""IGNIS local FIRMS processing."""

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#121513"><meta name="description" content="Explore historical NASA FIRMS thermal detections in Lahore and California with a daily, common-grid burning-activity calendar.">
+<title>IGNIS · Burning activity explorer</title>
+<link rel="icon" href="mark.svg" type="image/svg+xml"><link rel="stylesheet" href="vendor/leaflet.css"><link rel="stylesheet" href="styles.css">
+<script src="vendor/leaflet.js" defer></script><script type="module" src="app.js"></script>
+</head><body>
+<a class="skip" href="#calendar">Skip to calendar</a>
+<header class="top"><div class="shell topin"><a class="brand" href="./" aria-label="IGNIS home"><img src="mark.svg" alt="">IGNIS</a><span class="brandline"></span><span class="atlas">Fire activity atlas</span>
+<nav aria-label="Workspace"><a href="#workspace" class="active">Explorer</a><button id="method">Methodology</button><button id="audit">Source audit</button></nav><span class="dataset"><i></i> FIRMS archive</span></div></header>
+<main class="shell" id="workspace"><div class="heading"><div><div class="eyebrow"><span class="shortline"></span> Historical analysis</div><h1>Burning activity explorer</h1><p>Trace recorded thermal activity across seasons, sensors and study regions.</p></div>
+<button id="exportOpen" class="action" disabled><span aria-hidden="true">↓</span> Export data</button></div>
+<section class="filters" aria-label="Analysis filters"><label class="field region">Study region<select id="region"><option value="lahore">Lahore, Pakistan</option><option value="california">California, USA</option></select></label>
+<fieldset class="dates"><legend>Observation window <b>UTC</b></legend><input type="date" id="start" aria-label="Start date"><span>→</span><input type="date" id="end" aria-label="End date"><button class="iconbutton" id="reset" title="Reset full date range" aria-label="Reset full date range">↺</button></fieldset>
+<fieldset class="modes"><legend>Measurement</legend><div class="segments"><button data-mode="integrated" aria-pressed="true">Integrated</button><button data-mode="MODIS" aria-pressed="false">MODIS</button><button data-mode="VIIRS" aria-pressed="false">VIIRS</button></div></fieldset></section>
+<div id="status" role="status">Loading observations…</div>
+<section class="metrics" aria-label="Selection statistics">
+<div class="metric primary"><div class="mlabel"><span class="sym">▦</span> Union cell-days</div><strong id="union">—</strong><div>Common-grid activity</div></div>
+<div class="metric"><div class="mlabel"><span class="sym mod">●</span> MODIS observations</div><strong id="mraw">—</strong><div>Terra + Aqua · 1 km</div></div>
+<div class="metric"><div class="mlabel"><span class="sym vii">◆</span> VIIRS observations</div><strong id="vraw">—</strong><div>Suomi NPP · 375 m</div></div>
+<div class="metric"><div class="mlabel"><span class="sym">▥</span> Highest recorded month</div><button id="peakButton" title="Inspect highest recorded month"><strong id="peak">—</strong><span aria-hidden="true">↗</span></button><div id="peakValue">Within date filter</div></div></section>
+<div class="workgrid"><section id="calendar" class="panel"><div class="panelhead"><div class="overline">Temporal distribution</div><div class="titlerow"><h2>Activity calendar</h2><span class="chip" id="unitTag">Cell-days</span></div><p id="calDesc"></p></div>
+<div class="heatwrap" tabindex="0" aria-label="Year by month calendar, scroll for earlier years"><table class="heat"><caption class="sr">Monthly recorded activity by UTC year. Choose a month for details.</caption><thead><tr id="monthHeader"></tr></thead><tbody id="heatBody"></tbody></table></div>
+<div class="legend"><span>Lower</span><span class="ramp" aria-hidden="true"></span><span>Higher</span><span class="swatch missing">·</span> Unknown <span class="swatch unavailable">/</span> Unavailable</div>
+<div class="panelfoot"><span id="cellReadout" aria-live="polite">Select a month to inspect its observations.</span><button id="clearMonth" hidden>Clear month ×</button></div></section>
+<section class="panel spatial" aria-labelledby="maptitle"><div class="panelhead"><div class="overline">Spatial distribution</div><div class="titlerow"><h2 id="maptitle">Hotspot map</h2><button id="fitMap" class="minor" title="Fit study envelope">Fit extent</button></div><p id="mapDesc"></p></div>
+<div id="map" aria-label="Interactive geographic map of sampled thermal detections"></div>
+<div class="maptools"><span><i class="dot mod"></i> MODIS</span><span><i class="dot vii"></i> VIIRS</span><label><input type="checkbox" id="streets"> Street tiles</label></div><p id="mapCount" class="panelfoot"></p>
+<details class="samplelist"><summary>Inspect mapped observations</summary><div id="samples"></div></details></section></div>
+<div class="sectionheading"><div><div class="overline">Historical comparison</div><h2 id="detailTitle">Recorded activity</h2></div><span id="detailContext"></span></div>
+<div class="detailsgrid"><section class="panel"><div class="panelhead"><h3>Daily activity</h3><p id="dailyDesc"></p></div><div id="dailyChart" class="daily"></div><div class="panelfoot" id="dayFocus"></div></section>
+<section class="panel"><div class="panelhead"><h3>Same month across years</h3><p id="baselineText"></p></div><div id="historyChart" class="history"></div><div id="histReadout" class="panelfoot"></div></section></div>
+<div class="detailsgrid lower"><section class="panel"><div class="panelhead"><h3>Sensor overlap</h3><p>Occupied cell-days in the selected interval</p></div><div id="overlap"></div></section>
+<section class="panel"><div class="panelhead"><h3>Seasonal activity</h3><p id="seasonDesc"></p></div><div id="seasons"></div></section></div>
+<aside class="coveragebox"><span aria-hidden="true">ⓘ</span><div><strong>Coverage and interpretation</strong><p id="coverageNote"></p></div><button class="minor" id="moreScience">Read methods</button></aside>
+</main><footer><div class="shell"><b>IGNIS</b><span>Historical thermal activity · UTC</span><a href="https://firms.modaps.eosdis.nasa.gov/">NASA FIRMS ↗</a></div></footer>
+<dialog id="dialog"><div class="dialoghead"><h2 id="dtitle"></h2><button id="closeDialog" aria-label="Close dialog">×</button></div><div id="dcontent"></div></dialog>
+</body></html>

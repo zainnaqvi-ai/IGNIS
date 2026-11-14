@@ -1,0 +1,18 @@
+{
+  "lahore": {
+    "label": "Lahore",
+    "country": "Pakistan",
+    "files": {
+      "MODIS": "DL_FIRE_M-C61_847828 Modis Lahore.zip",
+      "VIIRS": "DL_FIRE_SV-C2_847829 Lahore VIRIIS.zip"
+    }
+  },
+  "california": {
+    "label": "California",
+    "country": "United States",
+    "files": {
+      "MODIS": "DL_FIRE_M-C61_847785_Modis California.zip",
+      "VIIRS": "DL_FIRE_SV-C2_847788 VIRIIS California.zip"
+    }
+  }
+}
