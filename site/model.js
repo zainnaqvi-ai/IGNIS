@@ -63,9 +63,11 @@ export function gapWarning(a,b,mode){
     ["2007-08-01","2007-08-31"],["2009-04-21","2009-04-22"]];
   return periods.some(([s,e])=>a<=e&&b>=s)?"FIRMS historical MODIS data-gap advisory":"";
 }
-function configuration(a,b,mode){
+export function configuration(a,b,mode){
   const aqua=a>="2002-07-03"?"post-Aqua start":b<"2002-07-03"?"Terra only":"Aqua transition";
-  return mode==="VIIRS"?era(a,b):aqua+" / "+era(a,b);
+  if(mode==="MODIS")return "MODIS · "+aqua;
+  if(mode==="VIIRS")return inScope(a,b,mode)?(a<VIIRS_FIRST||b>VIIRS_LAST?"S-NPP transition":"S-NPP"):"S-NPP unavailable";
+  return aqua+" / "+era(a,b);
 }
 // Descriptive median conditional on daily positive archive records. This
 // supports a statement about the files only, with no sampling-rate inference.
@@ -76,23 +78,21 @@ export function recordedReference(values,month){
   return {n:result.n,median:result.available?result.median:null};
 }
 // Match the selected day-of-month span, mission era and visible date filter.
-export function sameMonthSeries(daily,month,start,end,mode,measure){
-  const first=max(start,month+"-01"),last=min(end,endMonth(month));
-  const targetEra=configuration(first,last,mode), values=[], supportedDays=new Map();
-  const matches=new Map();
-  for(const [date,...r] of daily){
-    if(date<start || date>end || date.slice(5,7)!==month.slice(5) ||
-       date.slice(8)<first.slice(8) || date.slice(8)>last.slice(8))continue;
-    const m=key(date);
-    const needM=mode!=="VIIRS",needV=mode!=="MODIS" && inScope(date,date,"VIIRS");
-    if((!needM || (r[0]>0 && r[0]===r[7])) && (!needV || (r[1]>0 && r[1]===r[8])) && (needM||needV))supportedDays.set(m,1+(supportedDays.get(m)??0));
-    matches.set(m,sum(matches.get(m)??empty(),r));
-  }
+export function sameMonthSeries(daily,month,start,end,mode,measure,first=max(start,month+"-01"),last=min(end,endMonth(month))){
+  const byDay=daily instanceof Map?daily:new Map(daily.map(([d,...r])=>[d,r]));
+  const targetEra=configuration(first,last,mode), values=[];
   for(let y=+start.slice(0,4);y<=+end.slice(0,4);y++){
     const m=y+month.slice(4),a=m+"-"+first.slice(8),b=m+"-"+last.slice(8);
     if(a<start || b>end || b>endMonth(m) || configuration(a,b,mode)!==targetEra)continue;
-    const r=matches.get(m)??empty();
-    const dailyArchiveSupport=supportedDays.get(m)===Number(b.slice(8))-Number(a.slice(8))+1 && !gapWarning(a,b,mode);
+    let r=empty(), dailyArchiveSupport=!gapWarning(a,b,mode);
+    for(let d=+a.slice(8);d<=+b.slice(8);d++){
+      const stamp=m+"-"+String(d).padStart(2,"0"), obs=byDay.get(stamp);
+      if(!obs){dailyArchiveSupport=false;continue}
+      r=sum(r,obs);
+      const needM=mode!=="VIIRS",needV=mode!=="MODIS" && inScope(stamp,stamp,"VIIRS");
+      if((!needM && !needV) || (needM && !(obs[0]>0 && obs[0]===obs[7])) ||
+         (needV && !(obs[1]>0 && obs[1]===obs[8])))dailyArchiveSupport=false;
+    }
     values.push({m,r,dailyArchiveSupport,v:metric(r,mode,measure),s:coverage(r,mode,a,b),partial:a>m+"-01"||b<endMonth(m)});
   }
   return values;
@@ -100,15 +100,11 @@ export function sameMonthSeries(daily,month,start,end,mode,measure){
 export function rowsForExport({daily,start,end,mode,measure="cells",classification="all",bounds=null,envelope,region,frequency,sourceIds,contextStart,contextEnd}) {
   const days=new Map(daily.map(([day,...r])=>[day,r]));
   const {months}=summarize(daily,start,end);
-  const otherYears=new Map(), recorded=new Map();
   const rows=[];
   for(let day=start;day<=end;) {
     const month=key(day), monthly=frequency==="monthly", last=monthly?min(end,endMonth(month)):day;
-    if(!otherYears.has(month)){
-      const refs=sameMonthSeries(daily,month,contextStart??start,contextEnd??end,mode,measure);
-      recorded.set(month,recordedReference(refs,month));
-      otherYears.set(month,refs.filter(x=>x.m!==month && x.s==="positive_detection").length);
-    }
+    const refs=sameMonthSeries(days,month,contextStart??start,contextEnd??end,mode,measure,day,last);
+    const recorded=recordedReference(refs,month);
     const v=monthly?months.get(month)??empty():days.get(day)??empty();
     const status=coverage(v,mode,day,last), valid=status==="positive_detection"||status==="archive_request_window_verified";
     const relevant=sourceIds.filter(s=>{
@@ -125,8 +121,9 @@ export function rowsForExport({daily,start,end,mode,measure="cells",classificati
       archive_viirs:v[8],nrt_viirs:v[1]-v[8],contributing_source_members:relevant.map(s=>s.member).join("|"),
       policy:"Raw = source rows. Grid = MODIS >=30 / VIIRS n,h. Within selected classification.",grid:"0.02 deg; origin -180,-90; union per UTC day",
       modis_cell_days:v[4]+v[6],viirs_cell_days:v[5]+v[6],
-      other_same_month_years_with_records:otherYears.get(month),
-      recorded_reference_n:recorded.get(month).n,recorded_reference_median:recorded.get(month).median??"",
+      reference_from_utc:day,reference_to_utc:last,
+      other_same_month_years_with_records:refs.filter(x=>x.m!==month && x.s==="positive_detection").length,
+      recorded_reference_n:recorded.n,recorded_reference_median:recorded.median??"",
       comparable_baseline_n:0,baseline_status:"unavailable: unknown sampling support",area:bounds?"custom":"parent",
       bounds_wsen:(bounds??envelope??[]).join("|"),area_method:"Inclusive WGS84 reported point centers before gridding"});
     day=next(last);

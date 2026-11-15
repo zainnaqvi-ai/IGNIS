@@ -3,14 +3,24 @@ import argparse
 import csv
 import functools
 import re
+import io
+import json
+import xml.etree.ElementTree as ET
+from collections import Counter
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from threading import Thread
+from zipfile import ZipFile
 
 from playwright.sync_api import expect, sync_playwright
 
 ROOT=Path(__file__).resolve().parents[1]
+
+def download(page,label,path):
+    with page.expect_download() as info:
+        page.get_by_role("button",name=label).click()
+    info.value.save_as(path)
 
 
 def journey(url,channel):
@@ -22,6 +32,9 @@ def journey(url,channel):
         page.goto(url,wait_until="domcontentloaded")
         expect(page.locator("#mapCount")).to_contain_text("sampled points shown")
         expect(page.locator("#union")).to_have_text("19,724")
+        page.locator("#exportOpen").click()
+        expect(page.get_by_role("button",name="Download hotspot records CSV")).to_be_disabled()
+        page.keyboard.press("Escape")
         page.route("https://tile.openstreetmap.org/**",lambda route:route.abort())
         page.locator("#streets").click()
         expect(page.locator("#streets")).not_to_be_checked()
@@ -31,10 +44,12 @@ def journey(url,channel):
         page.screenshot(path=work/"desktop.png")
         page.locator("#region").select_option("california")
         expect(page.locator("#union")).to_have_text("382,271")
-        page.locator("#monthPick").fill("2020-09")
+        page.locator("#highMonths summary").click()
+        page.get_by_role("button",name=re.compile(r"Sep 2020 · 17,272 cell-days")).last.click()
         expect(page.locator("#union")).to_have_text("17,272")
         expect(page.locator('[data-month="2020-09"]')).to_have_attribute("aria-pressed","true")
         expect(page.locator("#mapCount")).to_contain_text("155,825 retained")
+        expect(page.locator("#seasonDesc")).to_contain_text("months with source detections")
         page.locator(".samplelist summary").click()
         page.locator("#samples button").first.click()
         expect(page.locator(".leaflet-popup-content")).to_contain_text("UTC")
@@ -47,6 +62,23 @@ def journey(url,channel):
         path=Path(tmp)/"month.csv";info.value.save_as(path)
         with path.open(newline="") as f: rows=list(csv.DictReader(f))
         assert len(rows)==1 and rows[0]["period"]=="2020-09" and rows[0]["recorded_value"]=="17272"
+        svg_path=Path(tmp)/"calendar.svg"
+        download(page,"Download calendar SVG",svg_path)
+        svg=ET.parse(svg_path).getroot()
+        ns={"s":"http://www.w3.org/2000/svg"}
+        selected=[g for g in svg.findall(".//s:g",ns) if g.find("s:rect[@stroke]",ns) is not None]
+        assert len(selected)==1 and selected[0].find("s:text",ns).text=="17,272"
+        assert "Sep 2020" in selected[0].find("s:title",ns).text
+        assert svg.find("s:desc",ns).text.count("2000-11-01 to 2026-11-13 UTC")==1
+        assert len(svg.findall(".//s:g/s:title",ns))==27*12
+        points_path=Path(tmp)/"points.csv"
+        download(page,"Download hotspot records CSV",points_path)
+        with points_path.open(newline="") as f:
+            records=0
+            for row in csv.DictReader(f):
+                assert row["acq_date_utc"].startswith("2020-09") and row["grid_retained"]=="true"
+                records+=1
+        assert records==155825
         page.keyboard.press("Escape")
         # Draw inside the California envelope, then inspect a month in that AOI.
         page.locator("#clearMonth").click()
@@ -106,6 +138,19 @@ def journey(url,channel):
         with path.open(newline="") as f: rows=list(csv.DictReader(f))
         assert len(rows)==5 and sum(int(r["recorded_value"] or 0) for r in rows)==value
         assert all(r["mode"]=="MODIS" and r["measure"]=="raw" and r["bounds_wsen"]=="-123.1|37.2|-119.2|41.3" for r in rows)
+        download(page,"Download hotspot records CSV",points_path)
+        with points_path.open(newline="") as f:
+            actual=Counter((r["acq_date_utc"],float(r["longitude"]),float(r["latitude"]),r["firms_type"],r["grid_retained"],r["source_member"]) for r in csv.DictReader(f))
+        sources=json.loads((ROOT/"site/data/sources.json").read_text())
+        source=next(s for s in sources if s["region"]=="california" and s["sensor"]=="MODIS" and s["status"]=="archive")
+        expected=Counter()
+        with ZipFile(ROOT/"data/raw"/source["zip"]) as z, z.open(source["member"]) as member:
+            for r in csv.DictReader(io.TextIOWrapper(member,encoding="utf-8")):
+                if "2020-09-06"<=r["acq_date"]<="2020-09-10":
+                    lon,lat=float(r["longitude"]),float(r["latitude"])
+                    if -123.1<=lon<=-119.2 and 37.2<=lat<=41.3:
+                        expected[(r["acq_date"],lon,lat,r["type"],str(int(r["confidence"])>=30).lower(),source["member"])]+=1
+        assert actual==expected and sum(actual.values())==value
         page.keyboard.press("Escape")
         page.locator("#west").fill("-150")
         page.get_by_role("button",name="Apply bounds").click()
@@ -124,6 +169,12 @@ def journey(url,channel):
         expect(page.locator("#metricScope")).to_contain_text("08 Sep 2020")
         page.locator("#region").select_option("lahore")
         expect(page.locator("#union")).to_have_text("19,724")
+        page.locator("#monthPick").fill("2021-11")
+        page.locator('[data-day="2021-11-05"]').click()
+        expect(page.locator("#union")).to_have_text("57")
+        expect(page.locator("#histReadout")).to_contain_text("22")
+        expect(page.locator("#histReadout")).to_contain_text("8 other years")
+        page.locator("#clearMonth").click()
         page.locator('[data-mode="VIIRS"]').click()
         pre=page.locator('[data-month="2009-05"]')
         expect(pre).to_have_attribute("aria-label",re.compile("Platform unavailable"))
@@ -140,6 +191,8 @@ def journey(url,channel):
         page.locator("#measure").select_option("cells")
         page.locator("#method").click()
         expect(page.locator("#dcontent")).to_contain_text("116 months")
+        page.get_by_text("Held-out errors by season · Lahore").click()
+        expect(page.locator("#dcontent table")).to_contain_text("54.1")
         page.keyboard.press("Escape");page.locator("#audit").click()
         page.locator("#dcontent summary").first.click()
         expect(page.locator("#dcontent")).to_contain_text("fire_archive_M-C61_847828.csv")
@@ -153,6 +206,10 @@ def journey(url,channel):
         path=Path(tmp)/"days.csv";info.value.save_as(path)
         with path.open(newline="") as f: rows=list(csv.DictReader(f))
         assert len(rows)==11 and all(r["calendar_state"]=="platform_not_available" and r["recorded_value"]=="" for r in rows)
+        download(page,"Download hotspot records CSV",points_path)
+        with points_path.open(newline="") as f:
+            empty_export=csv.DictReader(f)
+            assert "acq_date_utc" in empty_export.fieldnames and list(empty_export)==[]
         page.keyboard.press("Escape");page.locator("#reset").click();page.locator('[data-mode="integrated"]').click()
         page.set_viewport_size({"width":390,"height":844})
         page.evaluate("window.scrollTo({top:0,behavior:'instant'})")

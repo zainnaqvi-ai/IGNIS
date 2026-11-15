@@ -61,10 +61,12 @@ import {sameMonthSeries} from "../site/model.js";
 test("same-month references match partial date window and sensor era in UI and export",()=>{
   const rows=["2009-05-10","2019-05-10","2019-05-31","2020-05-10"].map(d=>[d,5,0,4,0,2,0,0,5,0]);
   const ref=sameMonthSeries(rows,"2020-05","2009-01-01","2020-05-13","MODIS","raw");
-  assert.ok(!ref.some(r=>r.m==="2009-05"));
+  assert.equal(ref.find(r=>r.m==="2009-05").v,5);
+  const joint=sameMonthSeries(rows,"2020-05","2009-01-01","2020-05-13","integrated","cells");
+  assert.ok(!joint.some(r=>r.m==="2009-05"));
   assert.equal(ref.find(r=>r.m==="2019-05").v,5);
   const exported=rowsForExport({daily:rows,start:"2020-05-01",end:"2020-05-13",mode:"MODIS",measure:"raw",region:"lahore",frequency:"monthly",sourceIds:[],contextStart:"2009-01-01",contextEnd:"2020-05-13"});
-  assert.equal(exported[0].other_same_month_years_with_records,1);
+  assert.equal(exported[0].other_same_month_years_with_records,2);
   assert.equal(exported[0].comparable_baseline_n,0);
 });
 

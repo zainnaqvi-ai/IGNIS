@@ -22,9 +22,10 @@ def prepare(frame, sensor):
     for col in ["latitude","longitude","scan","track","frp","brightness","bright_t31"]:
         frame[col] = pd.to_numeric(frame[col], errors="coerce")
     date = pd.to_datetime(frame.acq_date, format="%Y-%m-%d", errors="coerce")
+    time_present = frame.acq_time.str.fullmatch(r"\d{1,4}").fillna(False)
     hhmm = frame.acq_time.str.zfill(4)
     frame["acq_time"] = hhmm
-    valid = (frame.acq_time.str.fullmatch(r"\d{1,4}") & date.notna() & frame.acq_date.str.fullmatch(r"\d{4}-\d{2}-\d{2}") &
+    valid = (time_present & date.notna() & frame.acq_date.str.fullmatch(r"\d{4}-\d{2}-\d{2}") &
              hhmm.str.fullmatch(r"(?:[01]\d|2[0-3])[0-5]\d") &
              frame.latitude.between(-90,90) & frame.longitude.between(-180,180))
     if sensor == "MODIS":

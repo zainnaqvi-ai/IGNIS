@@ -26,6 +26,9 @@ def test_real_provenance():
         with ZipFile(RAW/s["zip"]) as z:
             assert z.open(s["member"]).readline().decode().strip().split(",")==s["fields"]
             assert s["readme"]==z.read("Readme.txt").decode().strip()
+        assert sum(s["raw_type_counts"].values())==s["rows"] and s["nulls"]["acq_time"]==0
+        if s["status"]=="nrt":
+            assert s["raw_type_counts"]=={"UNKNOWN":s["rows"]}
         assert len(s["sha256"])==64 and s["request_window"]=="UNKNOWN"
         assert s["invalid"]+s["clipped"]+s["duplicates"]+s["quality_excluded"]+s["retained"]==s["rows"]
 
@@ -41,10 +44,10 @@ def test_schema_and_quality():
 
 
 def test_invalid_and_utc():
-    rows=[fixture(),fixture(acq_date="2019-02-29"),fixture(acq_time="2400"),fixture(acq_time="1260"),
+    rows=[fixture(),fixture(acq_time=""),fixture(acq_date="2019-02-29"),fixture(acq_time="2400"),fixture(acq_time="1260"),
           fixture(latitude="91"),fixture(longitude="nan"),fixture(acq_date="20-01-01")]
     good,invalid=prepare(pd.DataFrame(rows),"MODIS")
-    assert invalid==6 and good.acq_time.tolist()==["0035"]
+    assert invalid==7 and good.acq_time.tolist()==["0035"]
 
 
 def test_duplicate_archive_precedence():
@@ -103,3 +106,19 @@ def test_complete_static_assets():
         assert (d/"overview.json").stat().st_size<300_000 and (d/"backdrop.json").stat().st_size>0
     for asset in ["index.html","app.js","styles.css","model.js","map.js","vendor/leaflet.js","vendor/leaflet.css"]:
         assert (ROOT/"site"/asset).is_file()
+
+
+def test_real_heldout_diagnostic():
+    from statistics import mean, median
+    for region in ("california","lahore"):
+        summary=json.loads((PUBLIC/region/"summary.json").read_text())
+        report=summary["overlap_diagnostic"]
+        pairs=[(int(m[:4]),om+b,ov+b) for m,_,_,_,_,om,ov,b,_,_ in summary["monthly"]
+               if om+b>0 and ov+b>0]
+        ratios=[v/m for year,m,v in pairs if 2013<=year<=2023]
+        hold=[(m,v) for year,m,v in pairs if year in (2024,2025)]
+        assert report["train_n"]==len(ratios) and report["holdout_n"]==len(hold)
+        assert report["factor"]==pytest.approx(median(ratios))
+        assert report["mae"]["scaled"]==pytest.approx(mean(abs(median(ratios)*m-v) for m,v in hold))
+        assert report["mae"]["unadjusted"]==pytest.approx(mean(abs(m-v) for m,v in hold))
+        assert summary["calibration"]["status"]=="unavailable"

@@ -1,6 +1,7 @@
-import {MONTHS,count,min,max,key,monthLabel,endMonth,next,empty,sum,metric,units,raw,coverage,supportText,era,summarize,rowsForExport,csv,recordedReference,gapWarning,sameMonthSeries} from "./model.js";
+import {MONTHS,count,min,max,key,monthLabel,endMonth,next,empty,sum,metric,units,raw,coverage,supportText,era,summarize,rowsForExport,csv,recordedReference,gapWarning,sameMonthSeries,configuration} from "./model.js";
 import {data,initMap,showMap} from "./map.js";
 import {showBounds} from "./draw.js";
+import {calendarSVG,canDownloadRecords,saveDownload,selectedRecordCSV} from "./exports.js";
 const el=id=>document.getElementById(id);
 const st={region:"lahore",mode:"integrated",measure:"cells",classification:"all",bounds:null,start:"",end:"",month:null,day:null};
 let summary,sources,days,sourceSet,loadedRegion=0,busy=true,parentDaily,areaWorker,queryId=0;
@@ -38,6 +39,7 @@ function selectMonth(month,focus=true){
 }
 function calendar(months){
   const body=el("heatBody"),frag=document.createDocumentFragment();
+  const highList=el("highList");highList.replaceChildren();
   const thresholds=bins([...months.values()].map(r=>metric(r,st.mode,st.measure)));
   el("scaleLow").textContent="Low · "+count(thresholds[0]);el("scaleHigh").textContent="High ≥ "+count(thresholds.at(-1));
   if(![...months.values()].some(r=>metric(r,st.mode,st.measure)>0)){el("scaleLow").textContent="No positive values";el("scaleHigh").textContent=""}
@@ -63,6 +65,13 @@ function calendar(months){
       b.title=desc;b.setAttribute("aria-label",desc);b.setAttribute("aria-pressed",st.month===month);b.dataset.month=month;
       b.onfocus=b.onmouseenter=()=>{el("cellReadout").textContent=desc};
       b.onclick=()=>selectMonth(month);
+      if(v>0 && v>=thresholds.at(-1)){
+        const jump=document.createElement("button");
+        jump.textContent=monthLabel(month)+" · "+count(v)+" "+units(st.measure)+(first>month+"-01"||last<endMonth(month)?" · partial":"");
+        jump.title=desc;jump.setAttribute("aria-label",desc);jump.dataset.period=month;
+        jump.onclick=()=>{selectMonth(month);el("heatBody").querySelector('[data-month="'+month+'"]').scrollIntoView({block:"nearest"})};
+        highList.append(jump);
+      }
       b.onkeydown=e=>{
         const off={ArrowLeft:-1,ArrowRight:1,ArrowUp:12,ArrowDown:-12}[e.key];if(!off)return;
         e.preventDefault();const t=new Date(Date.UTC(y,m-1+off,1)).toISOString().slice(0,7);
@@ -72,6 +81,10 @@ function calendar(months){
     frag.append(tr);
   }
   body.replaceChildren(frag);
+  highList.replaceChildren(...Array.from(highList.children).sort((a,b)=>a.dataset.period.localeCompare(b.dataset.period)));
+  el("highScope").textContent=highList.childElementCount
+    ?"Recorded totals ≥ "+count(thresholds.at(-1))+" "+units(st.measure)+" in this view. Dates are chronological. Sensor era and observation effort vary."
+    :"No positive months for these filters.";
   el("clearMonth").hidden=!st.month;
   el("cellReadout").textContent=st.month?monthLabel(st.month)+" selected · "+era(max(st.start,st.month+"-01"),min(st.end,endMonth(st.month))):"Choose a month for daily detail.  * Partial year · 2012 sensor transition.";
 }
@@ -96,17 +109,25 @@ function dailyView(month){
   el("dayFocus").textContent=st.day?formatDate(st.day)+" selected · select again for the month":"Choose a day to filter the map, metrics and export.";
 }
 function history(month){
-  const targetFirst=max(month+"-01",st.start),targetLast=min(endMonth(month),st.end);
-  const targetEra=era(targetFirst,targetLast),firstDay=targetFirst.slice(-2),lastDay=targetLast.slice(-2);
-  const values=sameMonthSeries(summary.daily,month,st.start,st.end,st.mode,st.measure);
+  const targetFirst=st.day??max(month+"-01",st.start),targetLast=st.day??min(endMonth(month),st.end);
+  const targetEra=configuration(targetFirst,targetLast,st.mode),firstDay=targetFirst.slice(-2),lastDay=targetLast.slice(-2);
+  const values=sameMonthSeries(days,month,st.start,st.end,st.mode,st.measure,targetFirst,targetLast);
   const n=values.filter(x=>x.s==="positive_detection"&&x.m!==month).length, maxValue=Math.max(...values.map(x=>x.v),1);
   const reference=recordedReference(values,month);
-  el("baselineText").textContent=MONTHS[+month.slice(5)-1]+" · "+n+" other recorded years · days "+firstDay+"–"+lastDay+" · "+targetEra+" · comparable baseline N = 0";
+  const matchedDays=firstDay===lastDay?"day "+firstDay:"days "+firstDay+"–"+lastDay;
+  el("baselineText").textContent=MONTHS[+month.slice(5)-1]+" · "+n+" other recorded years · "+matchedDays+" · "+targetEra+" · comparable baseline N = 0";
   const chart=el("historyChart");chart.replaceChildren();
   for(const {m,v,s,r,partial} of values){
     const b=document.createElement("button");b.className="histbar"+(s!=="positive_detection"?" gap":"")+(m===month?" selected":"");
-    b.style.maxWidth="36px";b.style.height=Math.max(4,100*v/maxValue)+"%";b.title=monthLabel(m)+" · "+(s==="positive_detection"?count(v)+" "+units(st.measure):supportText(s,r,st.mode,st.measure))+(partial?" · partial":"");
-    b.setAttribute("aria-label",b.title);b.onfocus=b.onmouseenter=()=>el("histReadout").textContent=b.title;b.onclick=()=>selectMonth(m);
+    const periodLabel=st.day?formatDate(m+"-"+firstDay):monthLabel(m);
+    b.style.maxWidth="36px";b.style.height=Math.max(4,100*v/maxValue)+"%";b.title=periodLabel+" · "+(s==="positive_detection"?count(v)+" "+units(st.measure):supportText(s,r,st.mode,st.measure))+(partial&&!st.day?" · partial":"");
+    b.setAttribute("aria-label",b.title);b.onfocus=b.onmouseenter=()=>el("histReadout").textContent=b.title;
+    b.onclick=()=>{
+      const dayOfMonth=st.day?.slice(8);
+      if(!dayOfMonth){selectMonth(m);return}
+      st.month=m;st.day=m+"-"+dayOfMonth;render();
+      el("dailyChart").querySelector('[data-day="'+st.day+'"]')?.focus({preventScroll:true});
+    };
     chart.append(b);
   }
   const a=el("historyAxis");a.textContent=values[0].m.slice(0,4)+" – "+values.at(-1).m.slice(0,4)+" · chronological";
@@ -120,13 +141,17 @@ function breakdown(total,months){
     const line=document.createElement("div");line.className="keyline";line.style.setProperty("--key",color);
     line.innerHTML="<span>"+label+"</span><b>"+count(total[i])+"</b>";overlap.append(line);
   }
-  const season=el("seasons");season.replaceChildren();const values=[0,0,0,0];
-  for(const [m,r] of months)values[Math.floor((+m.slice(5)%12)/3)]+=metric(r,st.mode,st.measure);
+  const season=el("seasons");season.replaceChildren();const values=[0,0,0,0],recordedMonths=[0,0,0,0];
+  for(const [m,r] of months){
+    const seasonIndex=Math.floor((+m.slice(5)%12)/3);
+    values[seasonIndex]+=metric(r,st.mode,st.measure);
+    if(raw(r,st.mode)>0)recordedMonths[seasonIndex]++;
+  }
   ["Winter · DJF","Spring · MAM","Summer · JJA","Autumn · SON"].forEach((label,i)=>{
     const div=document.createElement("div");div.className="seasonrow";
-    div.innerHTML="<span>"+label+"</span><meter min='0' max='"+Math.max(1,...values)+"' value='"+values[i]+"'></meter><b>"+count(values[i])+"</b>";season.append(div);
+    div.innerHTML="<span>"+label+" <small>· "+recordedMonths[i]+" mo.</small></span><meter aria-label='"+label+", "+units(st.measure)+"' min='0' max='"+Math.max(1,...values)+"' value='"+values[i]+"'></meter><b>"+(recordedMonths[i]?count(values[i]):"No record")+"</b>";season.append(div);
   });
-  el("seasonDesc").textContent="Recorded "+units(st.measure)+" across the date filter · unequal sampling";
+  el("seasonDesc").textContent="Recorded "+units(st.measure)+" across the date filter · months with source detections shown. Sampling varies.";
 
 }
 function render(){
@@ -204,10 +229,27 @@ function method(){
     add(div,"p","Full parent rectangle: "+count(c.paired_months)+" months had positive retained activity from both instruments across "+Object.keys(c.paired_by_year).length+" years. Independently supported paired months: "+c.supported_months+". "+c.reason+" No reference-scale coefficient or anomaly score is published.");
     const diag=summary.overlap_diagnostic;
     if(diag?.mae)add(div,"p","Archive-only sensitivity check, all types. A median ratio fitted on "+diag.train_n+" paired positive months in 2013–2023 gave held-out MAE "+diag.mae.scaled.toFixed(1)+" versus "+diag.mae.unadjusted.toFixed(1)+" unscaled cell-days/month on "+diag.holdout_n+" paired months in 2024–2025. Coverage remains unverified.");
+    const audit=summary.common_date_diagnostic;
+    if(audit?.original_monthly_target?.overall){
+      const detail=add(div,"details","");
+      add(detail,"summary","Held-out errors by season · "+niceRegion());
+      add(detail,"p","The second check fitted the same median ratio using only UTC dates with retained records from both sensors in this study rectangle. Both checks score the original monthly totals on the same 2024–2025 months. Error is the mean absolute difference from recorded VIIRS cell-days per month.");
+      const table=add(detail,"table","");
+      const header=table.createTHead().insertRow();
+      for(const name of ["Period","Months","Unadjusted","Common-date fit"])add(header,"th",name).scope="col";
+      const body=table.createTBody();
+      for(const k of ["overall","DJF","MAM","JJA","SON"]){
+        const err=audit.original_monthly_target[k];if(!err)continue;
+        const row=body.insertRow();add(row,"th",k).scope="row";
+        for(const field of [err.n,err.unadjusted.toFixed(1),err.scaled.toFixed(1)])add(row,"td",field);
+      }
+      const spatial=audit.all_holdout_cells;
+      add(detail,"p","Both sensors recorded activity on "+audit.matched_dates.holdout+" of 731 holdout dates. They shared "+count(spatial.both)+" of "+count(spatial.union)+" occupied cell-days. True overpass footprints and clear-sky observation effort are unknown. Neither fit is applied.");
+    }
     const det=add(div,"details","");add(det,"summary","Paired months by year");add(det,"p",Object.entries(c.paired_by_year).map(([y,n])=>y+" · "+n).join("  /  "));
     add(div,"h3","Reading the calendar");add(div,"p","Colors follow positive monthly totals within the current date filter at the 20th, 40th, 60th, 77th, 90th and 98th percentiles. Hatching marks unknown days; a slash marks unavailable platforms. A zero with source detections means no retained grid activity. The dashed 2012 row marks S-NPP entry. Partial years carry an asterisk.");
     add(div,"h3","Geographic and temporal support");add(div,"p","Rectangle outlines enclose all supplied point centers. Requested boundaries and complete overpass windows are unknown. Custom areas select original point centers inside or on the rectangle before computing grid occupancy. Map dots are sampled. The map includes public-domain Natural Earth context; optional street tiles are attributed to OpenStreetMap.");
-    add(div,"h3","Historical comparisons");add(div,"p","Seasonal totals describe the selected archive. The same-month chart uses the calendar month and visible date bounds, including during daily drilldown. It matches instrument era and the start of Aqua MODIS. Peak rankings are withheld because observation effort is unknown. A descriptive reference median requires archive detections on every matched day from every active selected sensor in the target and five other years, outside flagged MODIS periods. Positive records establish only that detections were recorded. Valid anomaly baselines require five comparable reference years and verified target support. Unknown observation effort precludes those comparisons here.");
+    add(div,"h3","Historical comparisons");add(div,"p","The chart compares the selected month or UTC day to the same calendar dates in other years inside the date filter. MODIS-only references follow the Terra/Aqua era. Integrated references also follow the S-NPP transition. A descriptive median requires archive detections on each matched day from every active selected sensor in the target and at least five other years, outside flagged MODIS periods. Observation effort remains unknown, so these medians cannot establish a fire anomaly.");
     const a=add(div,"a","NASA FIRMS product readme and disclaimer ↗");a.href="https://firms.modaps.eosdis.nasa.gov/download/Readme.txt";
   });
 }
@@ -226,16 +268,38 @@ function audit(){
 }
 function exporter(){
   info("Export selection",div=>{
-    const {start,end}=interval();add(div,"p",niceRegion()+" · "+formatDate(start)+" to "+formatDate(end)+" UTC · "+st.mode+" · "+units(st.measure)+" · "+(st.bounds?"Custom area "+st.bounds.join(", "):"Full study area")+". Includes source counts, grid overlap, method, coverage and baseline status.");
+    const {start,end}=interval(),selection={...st,start,end};
+    const areaName=st.bounds?"custom_"+st.bounds.join("_"):"parent";
+    const filename=(kind,first,last)=>["IGNIS",st.region,st.mode,st.measure,st.classification,kind,areaName,first,last].join("_");
+    add(div,"p",niceRegion()+" · "+formatDate(start)+" to "+formatDate(end)+" UTC · "+st.mode+" · "+units(st.measure)+" · "+(st.bounds?"Custom area "+st.bounds.join(", "):"Full study area")+". Includes source counts, grid overlap, method, coverage and baseline status.");
     for(const frequency of ["daily","monthly"]){
       const b=add(div,"button",frequency==="daily"?"Download daily CSV":"Download monthly CSV");
       b.onclick=()=>{
         const rows=rowsForExport({...st,start,end,daily:summary.daily,frequency,sourceIds:sourceSet,envelope:summary.envelope,contextStart:st.start,contextEnd:st.end});
-        const url=URL.createObjectURL(new Blob([csv(rows)],{type:"text/csv;charset=utf-8"}));
-        const a=document.createElement("a");a.href=url;a.download=["IGNIS",st.region,st.mode,st.measure,st.classification,frequency,st.bounds?"custom":"parent",start,end].join("_")+".csv";a.click();
-        setTimeout(()=>URL.revokeObjectURL(url),3000);
+        saveDownload(new Blob([csv(rows)],{type:"text/csv;charset=utf-8"}),filename(frequency,start,end)+".csv");
       };
     }
+    add(div,"h3","Hotspot records");
+    const allowed=canDownloadRecords(start,end);
+    const hint=add(div,"p",allowed?"One row per matching observation, with UTC date, point center, sensor, source member, inferred type and grid-retention flag.":"Select a month, a day or a date range of up to 31 UTC days to download individual observations.");
+    hint.setAttribute("role","status");
+    const points=add(div,"button","Download hotspot records CSV");points.disabled=!allowed;
+    points.onclick=async()=>{
+      points.disabled=true;hint.textContent="Preparing selected hotspot records…";
+      try{
+        const total=summarize(summary.daily,start,end).total;
+        const expected=st.measure==="raw"?raw(total,st.mode):st.mode==="integrated"?total[2]+total[3]:total[st.mode==="MODIS"?2:3];
+        const {blob,records}=await selectedRecordCSV(selection,sourceSet);
+        if(records!==expected)throw new Error("Observation count differs from the selected analytics.");
+        if(!div.isConnected||!el("dialog").open)return;
+        saveDownload(blob,filename("hotspots",start,end)+".csv");
+        hint.textContent=count(records)+" matching observation rows exported.";
+      }catch(error){hint.textContent="Download failed. "+error.message}
+      finally{points.disabled=false}
+    };
+    add(div,"h3","Calendar visualization");
+    add(div,"p","Full calendar date filter · "+formatDate(st.start)+" to "+formatDate(st.end)+" UTC. The selected month is outlined.");
+    add(div,"button","Download calendar SVG").onclick=()=>saveDownload(calendarSVG(st,summary.daily,el("heatBody"),summary.envelope),filename("calendar",st.start,st.end)+".svg");
   });
 }
 el("monthHeader").innerHTML="<th scope='col'>Year</th>"+MONTHS.map(m=>"<th scope='col'>"+m+"</th>").join("");

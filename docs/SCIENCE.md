@@ -26,6 +26,8 @@ Same-month anomaly assessment requires at least five independently supported, co
 
 A descriptive same-month median uses the current rectangle, selected class, measure and sensor. Target and peers must have positive standard-product detections from each active selected sensor on every matched calendar day, with the same era, Aqua start configuration and no flagged MODIS gap interval. At least five other years must pass. This intentionally selects well-recorded, potentially high-activity periods. The median describes recorded activity only. It does not correct for cloud, overpass effort, product changes or fire sensitivity.
 
+During daily drilldown the reference matches the exact UTC month and day in other years within the date filter. Exports match each row's own inclusive date bounds, including clipped months and single-day monthly exports. Single-sensor MODIS comparisons follow Terra/Aqua availability without imposing the unrelated S-NPP start date. Integrated comparisons retain the S-NPP era split. The archive has no verified daily completeness schedule. Missing rows stay unknown, and February 29 never matches February 28. Each ZIP comment and member comment was empty, and the four embedded readmes link only to the generic FIRMS product readme.
+
 ## Sources
 
 - [NASA FIRMS MODIS attributes](https://firms.modaps.eosdis.nasa.gov/content/descriptions/FIRMS_MODIS_Firehotspots.html)

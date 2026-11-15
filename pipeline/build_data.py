@@ -2,6 +2,7 @@
 import argparse
 import json
 from .area_index import pack, publish
+from .matched_agreement import calendar_diagnostic
 from zipfile import ZipFile
 
 import pandas as pd
@@ -61,6 +62,7 @@ def build_region(region, sources):
     summary = dict(region=region, first=daily.index[0],last=daily.index[-1],columns=FIELDS,
                    envelope=[f(s["envelope"][i] for s in sources) for i,f in enumerate([min,min,max,max])],
                    daily=records(daily),monthly=monthly,calibration=calibrate(monthly),overlap_diagnostic=overlap_diagnostic(monthly))
+    summary["common_date_diagnostic"] = calendar_diagnostic(summary["daily"])
     save_json(output/"summary.json", summary)
     points = pd.concat(samples).sort_values("acq_date",kind="stable")
     overview = []
