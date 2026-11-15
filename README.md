@@ -92,6 +92,8 @@ The build publishes daily ledgers, unsampled compact point indices and separatel
 
 NASA product definitions and attribution: [MODIS attributes](https://firms.modaps.eosdis.nasa.gov/content/descriptions/FIRMS_MODIS_Firehotspots.html), [VIIRS attributes](https://firms.modaps.eosdis.nasa.gov/content/descriptions/FIRMS_VIIRS_Firehotspots.html), [FIRMS readme and disclaimer](https://firms.modaps.eosdis.nasa.gov/download/Readme.txt). Existing contextual geography uses public-domain [Natural Earth](https://www.naturalearthdata.com/about/terms-of-use/), with optional [OpenStreetMap](https://www.openstreetmap.org/copyright) tiles. Neither supplies scientific observations. Bundled Leaflet uses its [BSD license](site/vendor/LEAFLET-LICENSE.txt).
 
+**SI-assisted processing:** OpenAI ChatGPT and Codex assisted with code development, debugging, testing, scientific-method review, interface refinement and documentation. The NASA observations were not AI-generated or replaced. Derived results are calculated from authentic observations using reproducible code. The companion [processing metadata](site/data/processing_metadata.json) records this assistance in machine-readable form alongside the processed data.
+
 ## Mathematics and scientific limits
 
 For area A on UTC day t, let M(t,A) and V(t,A) contain occupied MODIS and VIIRS cells. **U(t,A) = |M(t,A) ∪ V(t,A)|**; monthly **D(m,A) = Σ U(t,A)** in cell-days. Sensor overlap is counted once each day. Daily **Jaccard = |M ∩ V| / |M ∪ V|** is undefined for an empty union. Acquisition-time matching is a separate token diagnostic. Neither agreement measure identifies physical fire events.

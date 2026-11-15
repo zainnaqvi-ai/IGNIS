@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "project": "IGNIS",
+  "scope": "Scientific processing software and derived analytical outputs",
+  "data_source": "NASA FIRMS MODIS Terra/Aqua and Suomi-NPP VIIRS observations",
+  "source_manifest": "sources.json",
+  "original_observations_ai_generated": false,
+  "original_source_files_modified": false,
+  "synthetic_observations_added": false,
+  "development_assistance": [
+    "OpenAI ChatGPT",
+    "OpenAI Codex"
+  ],
+  "assistance_scope": [
+    "Python and JavaScript code development",
+    "Debugging and automated testing",
+    "Scientific-method review and calibration experiments",
+    "Interface refinement and documentation"
+  ],
+  "derived_results": "Calculated from authentic source observations using reproducible Python and JavaScript code developed with SI assistance; not generated as observations by a language model.",
+  "scientific_limits": "Missing observations are not invented. No unvalidated calibration coefficient is applied. Cell-days describe recorded grid occupancy, not individual wildfires or burned area."
+}
