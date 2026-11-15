@@ -9,7 +9,7 @@
 </head><body>
 <a class="skip" href="#calendar">Skip to calendar</a>
 <header class="top"><div class="shell topin"><a class="brand" href="./" aria-label="IGNIS home"><img src="mark.svg" alt="">IGNIS</a><span class="brandline"></span><span class="atlas">Fire activity atlas</span>
-<nav aria-label="Workspace"><a href="#workspace" class="active">Explorer</a><button id="method">Methodology</button><button id="audit">Source audit</button></nav><span class="dataset"><i></i> FIRMS archive · coverage unverified</span></div></header>
+<nav aria-label="Workspace"><a href="#workspace" class="active">Explorer</a><button id="method">About the data</button><a href="https://github.com/zainnaqvi-ai/IGNIS">GitHub ↗</a></nav><span class="dataset"><i></i> NASA FIRMS</span></div></header>
 <main class="shell" id="workspace"><div class="heading"><div><div class="eyebrow"><span class="shortline"></span> Earth observation atlas</div><h1>Burning activity explorer</h1><p>Select a month to inspect its daily record, or draw a rectangle to investigate a place.</p></div>
 <button id="exportOpen" class="action" disabled><span aria-hidden="true">↓</span> Export data</button></div>
 <section class="filters" aria-label="Analysis filters"><label class="field region">Study region<select id="region"><option value="lahore">Lahore, Pakistan</option><option value="california">California, USA</option></select></label>
@@ -20,10 +20,10 @@
 <div id="status" role="status">Loading observations…</div>
 <section class="metrics" aria-label="Selection statistics">
 <div class="metric primary"><div class="mlabel"><span id="metricLabel">Integrated cell-days</span></div><strong id="union">—</strong><div id="qualityLabel">Quality-filtered grid</div></div>
-<div class="metric"><div class="mlabel"><span class="sym mod">●</span> MODIS observations</div><strong id="mraw">—</strong><div>Terra + Aqua · 1 km</div></div>
-<div class="metric"><div class="mlabel"><span class="sym vii">◆</span> VIIRS observations</div><strong id="vraw">—</strong><div>Suomi NPP · 375 m</div></div>
-<div class="metric"><div class="mlabel"><span class="sym">▥</span> Inspect a month</div><input id="monthPick" type="month" aria-label="Inspect a month"><div id="peakValue">Open daily detail</div></div></section>
-<div class="workgrid"><section id="calendar" class="panel"><div class="panelhead"><div class="overline">Temporal distribution</div><div class="titlerow"><h2>Burning activity calendar</h2><span class="chip" id="unitTag">Cell-days</span></div><p id="calDesc"></p></div>
+<div class="metric"><div class="mlabel"><span class="sym mod">●</span> <span id="modisLabel">MODIS cell-days</span></div><strong id="mraw">—</strong><div>Terra + Aqua</div></div>
+<div class="metric"><div class="mlabel"><span class="sym vii">◆</span> <span id="viirsLabel">VIIRS cell-days</span></div><strong id="vraw">—</strong><div>Suomi NPP</div></div></section>
+<p class="measureNote" id="measurementNote">Cell-days measure occupied grid cells over time, not individual fires. Sensor totals can overlap.</p>
+<div class="workgrid"><section id="calendar" class="panel"><div class="panelhead"><div class="overline">Temporal distribution</div><div class="titlerow"><h2>Burning activity calendar</h2><span class="chip" id="unitTag">Cell-days</span></div><p id="calDesc"></p><label class="monthControl">Inspect a month <input id="monthPick" type="month"><span id="peakValue"></span></label></div>
 <div class="heatwrap" tabindex="0" aria-label="Year by month calendar, scroll for earlier years"><table class="heat"><caption class="sr">Monthly recorded activity by UTC year. Choose a month for details.</caption><thead><tr id="monthHeader"></tr></thead><tbody id="heatBody"></tbody></table></div>
 <div class="legend"><span id="scaleLow">Lower</span><span class="ramp" aria-hidden="true"></span><span id="scaleHigh">Higher</span><span class="swatch missing">·</span> Unknown <span class="swatch unavailable">/</span> Unavailable</div><p class="scaleNote">Intensity uses positive months in this area, window and measurement. 0 = recorded zero after filtering.</p>
 <details class="samplelist" id="highMonths"><summary>Inspect months in the highest color band</summary><p id="highScope"></p><div id="highList"></div></details>
@@ -37,10 +37,10 @@
 <details class="samplelist"><summary>Inspect mapped observations</summary><div id="samples"></div></details></section></div>
 <div class="sectionheading"><div><div class="overline">Historical comparison</div><h2 id="detailTitle">Recorded activity</h2></div><span id="detailContext"></span></div>
 <div class="detailsgrid"><section class="panel"><div class="panelhead"><h3>Daily activity</h3><p id="dailyDesc"></p></div><div id="dailyChart" class="daily"></div><div class="panelfoot" id="dayFocus"></div></section>
-<section class="panel"><div class="panelhead"><h3>Same month across years</h3><p id="baselineText"></p></div><div id="historyChart" class="history"></div><div id="histReadout" class="panelfoot"></div></section></div>
-<div class="detailsgrid lower"><section class="panel"><div class="panelhead"><h3>Sensor overlap</h3><p>Occupied cell-days in the selected interval</p></div><div id="overlap"></div></section>
-<section class="panel"><div class="panelhead"><h3>Seasonal activity</h3><p id="seasonDesc"></p></div><div id="seasons"></div></section></div>
-<aside class="coveragebox"><span aria-hidden="true">ⓘ</span><div><strong>Coverage and interpretation</strong><p id="coverageNote"></p></div><button class="minor" id="moreScience">Read methods</button></aside>
+<section class="panel"><div class="panelhead"><h3>Same period across years</h3><p id="baselineText"></p><label class="field referenceControl">Reference years<select id="referencePolicy"><option value="earlier">Earlier eligible years only</option><option value="other">Other eligible years · retrospective</option></select></label></div><div id="historyChart" class="history"></div><div id="histReadout" class="panelfoot"></div><p id="referenceStats" class="scaleNote" aria-live="polite"></p></section></div>
+<div class="detailsgrid lower"><section class="panel"><div class="panelhead"><h3>Seasonal activity</h3><p id="seasonDesc"></p></div><div id="seasons"></div><p class="scaleNote">Calendar lengths and missing records differ. These are totals, not seasonal rates.</p></section>
+<section class="panel"><div class="panelhead"><h3>Recorded activity in context</h3><p id="unusualContext"></p><strong id="unusualLabel" class="unusual" tabindex="0"></strong><p id="unusualDetail"></p><p class="contextNote">Based on eligible recorded years. Not a warning or forecast.</p></div></section></div>
+<p class="measureNote" id="coverageNote"></p>
 </main><footer><div class="shell"><b>IGNIS</b><span>Historical thermal activity · UTC</span><a href="https://firms.modaps.eosdis.nasa.gov/">NASA FIRMS ↗</a></div></footer>
 <dialog id="dialog"><div class="dialoghead"><h2 id="dtitle"></h2><button id="closeDialog" aria-label="Close dialog">×</button></div><div id="dcontent"></div></dialog>
 </body></html>

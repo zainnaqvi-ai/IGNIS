@@ -81,3 +81,35 @@ test("recorded median requires daily archive support for target and peers",()=>{
   assert.ok(gapWarning("2009-04-22","2009-04-22","MODIS"));
   assert.equal(gapWarning("2009-04-23","2009-04-23","MODIS"),"");
 });
+
+test("daily exports use each UTC day's reference rather than the whole month's",()=>{
+  const days=[];
+  for(let year=2013;year<=2020;year++)for(const [day,n] of [["05",2],["06",10]])
+    days.push([year+"-11-"+day,n,n,n,n,0,0,n,n,n]);
+  const rows=rowsForExport({daily:days,start:"2020-11-05",end:"2020-11-06",
+    contextStart:"2013-01-01",contextEnd:"2020-12-31",mode:"integrated",frequency:"daily",sourceIds:[]});
+  assert.deepEqual(rows.map(r=>r.recorded_reference_median),[2,10]);
+  assert.ok(rows.every(r=>r.recorded_reference_n===7&&r.reference_from_utc===r.reference_to_utc&&r.comparable_baseline_n===0));
+});
+
+test("single-day leap references never substitute February 28",()=>{
+  const days=["2016-02-29","2017-02-28","2018-02-28","2019-02-28","2020-02-29"].map(d=>[d,1,1,1,1,0,0,1,1,1]);
+  const refs=sameMonthSeries(days,"2020-02","2016-01-01","2020-12-31","integrated","cells","2020-02-29","2020-02-29");
+  assert.deepEqual(refs.map(r=>r.m),["2016-02","2020-02"]);
+  assert.deepEqual(recordedReference(refs,"2020-02"),{n:1,median:null});
+});
+
+test("MODIS reference ignores the VIIRS start but preserves the Aqua transition",()=>{
+  const days=["2001-11-05","2003-11-05","2011-11-05","2013-11-05"].map(d=>[d,1,1,1,1,0,0,1,1,1]);
+  const ref=mode=>sameMonthSeries(days,"2013-11","2001-01-01","2013-12-31",mode,"cells","2013-11-05","2013-11-05").filter(r=>r.dailyArchiveSupport).map(r=>r.m);
+  assert.deepEqual(ref("MODIS"),["2003-11","2011-11","2013-11"]);
+  assert.deepEqual(ref("integrated"),["2013-11"]);
+});
+
+test("mixed archive/NRT support cannot establish a descriptive reference",()=>{
+  const days=[];
+  for(let year=2013;year<=2020;year++)days.push([year+"-11-05",2,2,2,2,0,0,2,2,year===2014?1:2]);
+  const refs=sameMonthSeries(days,"2020-11","2013-01-01","2020-12-31","integrated","cells","2020-11-05","2020-11-05");
+  assert.deepEqual(recordedReference(refs,"2020-11"),{n:6,median:2});
+  assert.equal(recordedReference(refs,"2014-11").median,null);
+});

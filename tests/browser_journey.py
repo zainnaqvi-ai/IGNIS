@@ -32,6 +32,13 @@ def journey(url,channel):
         page.goto(url,wait_until="domcontentloaded")
         expect(page.locator("#mapCount")).to_contain_text("sampled points shown")
         expect(page.locator("#union")).to_have_text("19,724")
+        expect(page.locator(".metrics .metric")).to_have_count(3)
+        expect(page.locator("#modisLabel")).to_have_text("MODIS cell-days")
+        expect(page.locator("#viirsLabel")).to_have_text("VIIRS cell-days")
+        for removed in ["#overlap","#sensorIncrement","#audit",".coveragebox"]:
+            expect(page.locator(removed)).to_have_count(0)
+        for phrase in ["PASS", "NOT VALIDATED", "MAE", "N = 0", "sensor-days"]:
+            assert phrase not in page.locator("main").inner_text()
         page.locator("#exportOpen").click()
         expect(page.get_by_role("button",name="Download hotspot records CSV")).to_be_disabled()
         page.keyboard.press("Escape")
@@ -41,7 +48,50 @@ def journey(url,channel):
         expect(page.locator("#mapDesc")).to_contain_text("offline geography")
         work=ROOT/"data/work";work.mkdir(exist_ok=True,parents=True)
         page.evaluate("window.scrollTo(0,0)")
-        page.screenshot(path=work/"desktop.png")
+        page.screenshot(path=work/"desktop.png",full_page=True)
+        # Both reported October cases, each sensor and both distinct measures.
+        for region in ("california", "lahore"):
+            page.locator("#region").select_option(region)
+            expect(page.locator("#exportOpen")).to_be_enabled()
+            for month in ("2003-10", "2026-10"):
+                page.locator("#monthPick").fill(month)
+                for mode in ("integrated", "MODIS", "VIIRS"):
+                    page.locator(f'[data-mode="{mode}"]').click()
+                    expected_n = 0 if month == "2003-10" else {"california": {"integrated": 8, "MODIS": 13, "VIIRS": 14}, "lahore": {"integrated": 0, "MODIS": 0, "VIIRS": 5}}[region][mode]
+                    for measure in ("raw", "cells"):
+                        page.locator("#measure").select_option(measure)
+                        expect(page.locator("#baselineText")).to_contain_text(f"{expected_n} reference-eligible")
+                        note = page.locator("#measurementNote")
+                        if measure == "raw":
+                            expect(note).to_contain_text("Raw detections count source records")
+                            expect(note).not_to_contain_text("Cell-days")
+                            if mode == "integrated":
+                                expect(page.locator("#metricLabel")).to_have_text("Combined raw detections")
+                        else:
+                            expect(note).to_contain_text("Cell-days measure occupied grid cells")
+                        if month == "2026-10":
+                            expect(page.locator("#histReadout")).to_contain_text("contains NRT records")
+                            expect(page.locator("#unusualLabel")).to_have_text("Selected period not comparable")
+                            expect(page.locator("#historyChart button")).to_have_count(25 if mode == "MODIS" else 15)
+                        elif mode == "VIIRS":
+                            expect(page.locator("#unusualLabel")).to_have_text("Sensor unavailable")
+                        elif region == "california":
+                            expect(page.locator("#histReadout")).to_contain_text("Only 0 eligible earlier years")
+                        else:
+                            expect(page.locator("#histReadout")).to_contain_text("lacks daily archive records")
+                if region == "california" and month == "2026-10":
+                    page.locator('[data-mode="integrated"]').click()
+                    page.locator("#exportOpen").click()
+                    case_path=Path(tmp)/"october.csv"
+                    download(page,"Download monthly CSV",case_path)
+                    with case_path.open(newline="") as f: case=next(csv.DictReader(f))
+                    assert case["recorded_value"]=="1464" and case["recorded_reference_n"]=="8"
+                    assert case["recorded_reference_median"]=="" and "nrt_records" in case["recorded_target_issues"]
+                    audit=json.loads(case["reference_eligibility"])
+                    assert sum(r["eligible"] for r in audit)==8
+                    page.keyboard.press("Escape")
+                    page.locator(".panel").filter(has=page.locator("#referenceStats")).screenshot(path=work/"october-reference.png")
+        page.locator('[data-mode="integrated"]').click()
         page.locator("#region").select_option("california")
         expect(page.locator("#union")).to_have_text("382,271")
         page.locator("#highMonths summary").click()
@@ -49,13 +99,13 @@ def journey(url,channel):
         expect(page.locator("#union")).to_have_text("17,272")
         expect(page.locator('[data-month="2020-09"]')).to_have_attribute("aria-pressed","true")
         expect(page.locator("#mapCount")).to_contain_text("155,825 retained")
-        expect(page.locator("#seasonDesc")).to_contain_text("months with source detections")
-        page.locator(".samplelist summary").click()
+        expect(page.locator("#seasonDesc")).to_contain_text("totals · full date filter")
+        page.get_by_text("Inspect mapped observations",exact=True).click()
         page.locator("#samples button").first.click()
         expect(page.locator(".leaflet-popup-content")).to_contain_text("UTC")
         expect(page.locator(".leaflet-popup-content")).to_contain_text("FRP")
         page.locator(".leaflet-popup-close-button").click()
-        expect(page.locator("#baselineText")).to_contain_text("comparable baseline N = 0")
+        expect(page.locator("#baselineText")).not_to_contain_text("N = 0")
         page.locator("#exportOpen").click()
         with page.expect_download() as info:
             page.get_by_role("button",name="Download monthly CSV").click()
@@ -101,7 +151,7 @@ def journey(url,channel):
         page.locator("#samples button").first.click()
         expect(page.locator(".leaflet-popup-content")).to_contain_text("FRP")
         page.locator(".leaflet-popup-close-button").click()
-        expect(page.locator("#baselineText")).to_contain_text("comparable baseline N = 0")
+        expect(page.locator("#baselineText")).not_to_contain_text("N = 0")
         page.locator("#exportOpen").click()
         with page.expect_download() as info:
             page.get_by_role("button",name="Download monthly CSV").click()
@@ -173,7 +223,32 @@ def journey(url,channel):
         page.locator('[data-day="2021-11-05"]').click()
         expect(page.locator("#union")).to_have_text("57")
         expect(page.locator("#histReadout")).to_contain_text("22")
-        expect(page.locator("#histReadout")).to_contain_text("8 other years")
+        expect(page.locator("#referencePolicy")).to_have_value("earlier")
+        expect(page.locator("#histReadout")).to_contain_text("6 eligible earlier years")
+        expect(page.locator("#unusualLabel")).to_have_text("Not enough comparable history")
+        page.locator("#referencePolicy").select_option("other")
+        expect(page.locator("#histReadout")).to_contain_text("8 eligible other years")
+        expect(page.locator("#referenceStats")).to_contain_text("Middle 50%: 11–25.5 cell-days")
+        expect(page.locator("#unusualLabel")).to_have_text("Higher than usual recorded activity")
+        page.locator("#exportOpen").click()
+        download(page,"Download daily CSV",path)
+        with path.open(newline="") as f: score_row=next(csv.DictReader(f))
+        assert abs(float(score_row["recorded_robust_deviation"])-35/(1.4826*8))<1e-12
+        assert score_row["recorded_unusualness"]=="Higher than usual recorded activity"
+        page.keyboard.press("Escape")
+        page.locator(".panel").filter(has=page.locator("#referenceStats")).screenshot(path=work/"reference-panel.png")
+        page.locator("#referencePolicy").select_option("earlier")
+        expect(page.locator("#histReadout")).to_contain_text("6 eligible earlier years")
+        expect(page.locator("#unusualLabel")).to_have_text("Not enough comparable history")
+        page.locator("#exportOpen").click()
+        download(page,"Download daily CSV",path)
+        with path.open(newline="") as f: reference_row=next(csv.DictReader(f))
+        assert reference_row["reference_policy"]=="earlier" and reference_row["recorded_reference_n"]=="6"
+        assert reference_row["recorded_reference_q25"]=="13" and reference_row["recorded_mad_units"]==""
+        assert all(year<"2021" for year in reference_row["reference_years"].split("|"))
+        assert reference_row["sensor_days_with_records"]=="2" and reference_row["observation_completeness"]=="UNKNOWN"
+        page.keyboard.press("Escape")
+        page.locator("#referencePolicy").select_option("other")
         page.locator("#clearMonth").click()
         page.locator('[data-mode="VIIRS"]').click()
         pre=page.locator('[data-month="2009-05"]')
@@ -190,12 +265,9 @@ def journey(url,channel):
         assert int(raw_count.replace(",",""))>int(modis_cells.replace(",",""))
         page.locator("#measure").select_option("cells")
         page.locator("#method").click()
-        expect(page.locator("#dcontent")).to_contain_text("116 months")
-        page.get_by_text("Held-out errors by season · Lahore").click()
-        expect(page.locator("#dcontent table")).to_contain_text("54.1")
-        page.keyboard.press("Escape");page.locator("#audit").click()
-        page.locator("#dcontent summary").first.click()
-        expect(page.locator("#dcontent")).to_contain_text("fire_archive_M-C61_847828.csv")
+        expect(page.locator("#dcontent")).to_contain_text("not individual fires or burned area")
+        expect(page.locator("#dcontent table")).to_have_count(0)
+        expect(page.get_by_role("link",name="Read the scientific methods on GitHub")).to_have_attribute("href",re.compile("github.com/zainnaqvi-ai/IGNIS/blob/main/docs/SCIENCE.md"))
         page.keyboard.press("Escape")
         page.locator("#start").fill("2026-11-03");page.locator("#start").dispatch_event("change")
         page.locator('[data-mode="VIIRS"]').click()
@@ -215,7 +287,16 @@ def journey(url,channel):
         page.evaluate("window.scrollTo({top:0,behavior:'instant'})")
         expect(page.locator("#mapCount")).to_contain_text("sampled points shown")
         assert page.evaluate("document.documentElement.scrollWidth<=innerWidth")
-        page.screenshot(path=work/"mobile.png")
+        page.screenshot(path=work/"mobile.png",full_page=True)
+        for control in ["#region","#start","#end","#measure","#classification","#referencePolicy","#drawArea","#exportOpen"]:
+            box=page.locator(control).bounding_box()
+            assert box["width"]>=24 and box["height"]>=24,(control,box)
+        page.locator("#referencePolicy").focus()
+        assert page.locator(":focus").get_attribute("id")=="referencePolicy"
+        page.locator("#referencePolicy").select_option("earlier")
+        expect(page.locator("#unusualLabel")).to_have_text("Selected period not comparable")
+        assert page.evaluate("document.documentElement.scrollWidth<=innerWidth")
+        page.locator("#referencePolicy").select_option("other")
         page.locator("#start").fill("2021-11-01")
         page.locator("#end").fill("2021-11-30")
         page.locator("#monthPick").fill("2021-11")
@@ -237,7 +318,7 @@ def journey(url,channel):
         assert sum(int(r["recorded_value"] or 0) for r in classified)==326
         assert not errors,errors
         browser.close()
-    print("PASS: California draw, edit, typed coordinates, AOI/sensor/measure/date scope, map, comparison and CSV; Lahore sensor transition, methods, audit, partial dates, mobile controls and exports.")
+    print("PASS: California draw, edit, typed coordinates, AOI/sensor/measure/date scope, map, comparison and CSV; Lahore sensor transition, simple help, unusualness, partial dates, mobile controls and exports.")
 
 
 if __name__=="__main__":

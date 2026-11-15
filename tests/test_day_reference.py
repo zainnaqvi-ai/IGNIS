@@ -3,6 +3,8 @@ import csv
 import io
 import json
 import statistics
+import numpy as np
+import pytest
 import subprocess
 from collections import defaultdict
 from decimal import Decimal
@@ -54,4 +56,14 @@ def test_lahore_november_5_day_reference():
         assert row["recorded_value"] == len(occupied[target]) == 57
         assert row["recorded_reference_n"] == len(peers) == 8
         assert row["recorded_reference_median"] == statistics.median(peers) == 22
+        assert row["recorded_reference_q25"] == pytest.approx(np.quantile(peers,.25))
+        assert row["recorded_reference_q75"] == pytest.approx(np.quantile(peers,.75))
+        assert row["recorded_reference_p10"] == pytest.approx(np.quantile(peers,.1))
+        assert row["recorded_reference_p90"] == pytest.approx(np.quantile(peers,.9))
+        mad=statistics.median(abs(v-22) for v in peers)
+        assert row["recorded_reference_mad"] == mad
+        assert row["recorded_mad_units"] == pytest.approx((57-22)/mad)
+        assert row["recorded_robust_deviation"] == pytest.approx((57-22)/(1.4826*mad))
+        assert row["recorded_unusualness"] == "Higher than usual recorded activity"
+        assert row["recorded_midrank_percentile"] == 100*(sum(v<57 for v in peers)+.5*peers.count(57))/len(peers)
         assert row["comparable_baseline_n"] == 0
