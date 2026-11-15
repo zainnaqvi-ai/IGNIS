@@ -92,3 +92,25 @@ def calibrate(months, supported=()):
                   candidate=factor,mae=float(residual.abs().mean()),baseline_mae=float(base.abs().mean()),
                   seasonal=seasonal.to_dict("index"),reason="Passed held-out checks." if passed else "Held-out or stability gate failed.")
     return report
+
+
+def overlap_diagnostic(months):
+    """Retrospective agreement conditional on both sensors recording activity."""
+    df = pd.DataFrame(months, columns=FIELDS).set_index("period")
+    paired = pd.DataFrame({"m":df.only_m+df.both, "v":df.only_v+df.both})
+    # Omit mission-entry year and the ending partial/NRT year. Freeze split
+    # before evaluation. No imputation of silent months or repeated fitting.
+    paired = paired[(paired.m>0) & (paired.v>0)]
+    train = paired.loc["2013-01":"2023-12"]
+    hold = paired.loc["2024-01":"2025-12"]
+    if train.empty or hold.empty:
+        return {"status":"insufficient pairs"}
+    ratios = train.v / train.m
+    scale = float(ratios.median())
+    errors = pd.DataFrame({"unadjusted":(hold.m-hold.v).abs(),
+                           "scaled":(scale*hold.m-hold.v).abs()})
+    season = (hold.index.str[5:7].astype(int)%12)//3
+    return dict(status="descriptive only",train_n=len(train),holdout_n=len(hold),
+                factor=scale,training_iqr=ratios.quantile([.25,.75]).tolist(),
+                mae=errors.mean().to_dict(),seasonal_mae=errors.groupby(season).mean().to_dict("index"),
+                heldout_pairs_by_year=hold.groupby(hold.index.str[:4]).size().to_dict())

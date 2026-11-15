@@ -1,6 +1,6 @@
 # IGNIS · Fire activity atlas
 
-An independent historical burning-activity workstation for the Lahore and California study rectangles. The static site already contains all generated analytics and offline geographic context. Use the integrated cell-day calendar or switch to the original MODIS and S-NPP VIIRS observation counts.
+An independent historical burning-activity workstation for the Lahore and California study rectangles. The static site already contains all generated analytics and offline geographic context. Choose a measure (raw detections or occupied cell-days) independently of sensor (MODIS, S-NPP VIIRS or Integrated). Use Draw area or enter coordinates to select reported centers before aggregation.
 
 ## Run in PyCharm on this workstation
 
@@ -38,13 +38,14 @@ For the browser test on Windows, install the optional test driver and use an ins
 ## Ninety-second demonstration
 
 1. Start in Lahore and compare the 6,543 raw MODIS rows, 23,500 raw VIIRS rows and 19,724 integrated cell-days. Open Methodology for the 116 matched positive months and eligibility finding.
-2. Choose California, then select **Sep 2020** in the highest-recorded-month scorecard. Inspect a map observation and its source member. The month contains 17,272 occupied cell-days. Compare other Septembers, then use **Export data** for the monthly CSV.
+2. Choose California, then enter **September 2020** in **Inspect a month**. Inspect a map observation and its source member. The month contains 17,272 occupied cell-days. Compare other Septembers, then use **Export data** for the monthly CSV.
 3. Select one September day. The totals, map and downloads narrow to that day. Clear the month to return to the full date filter.
-4. Return to Lahore, switch to VIIRS and scroll back before 2012. Inspect the unavailable months. Open Source audit to compare archive and NRT provenance.
+4. Fit the map to its extent. Choose **Draw area** and drag between two corners inside the dashed rectangle. Inspect coordinates, edit the rectangle, then reset it. The selected date, sensor and measure persist.
+5. Return to Lahore, switch to VIIRS and scroll back before 2012. Inspect the unavailable months. Open Source audit to compare archive and NRT provenance.
 
 ## GitHub and Netlify handoff
 
-The repository excludes raw ZIPs, intermediate cell records, local screenshots, the virtual environment and IDE settings. Only the generated static data is needed to serve the application. Review tracked files with `git ls-files`. Before any later publication, obtain the operator's authorization and create an empty repository on GitHub. Then, from the project root in PowerShell:
+The repository excludes raw ZIPs, intermediate cell records, local screenshots, the virtual environment and IDE settings. Only the generated static data is needed to serve the application. Before handoff, review `git status --short`, stage the refinement sources and both generated `site/data/*/area/` directories, and commit them locally. Review tracked files with `git ls-files`. Before any later publication, obtain the operator's authorization and create an empty repository on GitHub. Then, from the project root in PowerShell:
 
 ```powershell
 $ignisRemote = Read-Host 'Paste the approved empty GitHub repository HTTPS URL'
@@ -56,6 +57,6 @@ In Netlify, import that GitHub repository, select branch `main`, leave the build
 
 ## Data and interpretation
 
-See [data audit and totals](docs/DATA_AUDIT.md), [scientific methods](docs/SCIENCE.md), [static contracts](docs/SCHEMA.md), [challenge alignment](docs/CHALLENGE_ALIGNMENT.md) and [source manifest](config/source_manifest.csv). Recorded peaks and seasonal totals reflect heterogeneous sampling effort. The interface labels unknown periods and withholds calibrated indices for both regions. The entire site uses about 10 MB of generated data. Map partitions load on demand with a maximum of 650 displayed points and separate full counts.
+See [data audit and totals](docs/DATA_AUDIT.md), [scientific methods](docs/SCIENCE.md), [static contracts](docs/SCHEMA.md), [challenge alignment](docs/CHALLENGE_ALIGNMENT.md) and [source manifest](config/source_manifest.csv). Recorded totals reflect heterogeneous sampling effort. Same-month charts match calendar day bounds and instrument era. Historical peak rankings are withheld. The interface labels unknown periods and withholds calibrated indices for both regions. The entire site uses about 28.5 MB of generated data, including 18.2 MB of exact point-center indices loaded by region and year only for custom-area analysis. Map partitions load on demand with a maximum of 650 displayed points and separate full counts.
 
 Fire observations are provided by NASA FIRMS, including standard products and LANCE near-real-time data. See the [FIRMS readme and use disclaimer](https://firms.modaps.eosdis.nasa.gov/download/Readme.txt). Geographic context uses [Natural Earth public-domain 1:50m data](https://www.naturalearthdata.com/about/terms-of-use/). If refreshing that optional context, see the instructions in [the backdrop builder](pipeline/build_backdrop.py). Street tiles are optional and attributed to [OpenStreetMap contributors](https://www.openstreetmap.org/copyright). Leaflet 1.9.4 is distributed under its [BSD license](site/vendor/LEAFLET-LICENSE.txt).

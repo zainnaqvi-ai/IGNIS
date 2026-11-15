@@ -1,13 +1,13 @@
 """Build compact static data directly from local ZIP streams."""
 import argparse
 import json
-from pathlib import Path
+from .area_index import pack, publish
 from zipfile import ZipFile
 
 import pandas as pd
 
 from .inspect_inputs import PUBLIC, RAW, REGIONS, ROOT, chunks, inventory, save_json, write_manifest
-from .science import FIELDS, calibrate, cell_counts, deduplicate, integration, prepare
+from .science import FIELDS, calibrate, overlap_diagnostic, cell_counts, deduplicate, integration, prepare
 
 
 def records(table):
@@ -16,7 +16,7 @@ def records(table):
 
 def build_region(region, sources):
     output = PUBLIC / region
-    raw_series, grids, samples = [], [], []
+    raw_series, grids, samples, index_parts = [], [], [], []
     for sensor, suffix in [("MODIS","m"),("VIIRS","v")]:
         frames = []
         for s in (s for s in sources if s["sensor"]==sensor):
@@ -31,8 +31,13 @@ def build_region(region, sources):
             dates = pd.concat(date_counts).groupby(level=0).sum()
             dates = dates[pd.to_datetime(dates.index,format="%Y-%m-%d",errors="coerce").notna()]
             raw_series.append(dates.rename(f"{s['status']}_{suffix}"))
-        frame, removed = deduplicate(pd.concat(frames,ignore_index=True))
+        original = pd.concat(frames,ignore_index=True)
         del frames
+        frame, removed = deduplicate(original)
+        for s in (s for s in sources if s["sensor"]==sensor):
+            s["raw_type_counts"] = original.loc[original.src==s["id"],"type"].value_counts().to_dict()
+        index_parts.append(pack(original, frame.index[frame.quality], sensor))
+        del original
         for s in (s for s in sources if s["sensor"]==sensor):
             group = frame.loc[frame.src==s["id"]]
             s.update(duplicates=int(removed.get(s["id"],0)),quality_excluded=int((~group.quality).sum()),
@@ -43,6 +48,7 @@ def build_region(region, sources):
         samples.append(ordered.groupby(["acq_date","quality"]).head(8))
         del frame, ordered
 
+    publish(output, index_parts)
     cells, daily = integration(*grids)
     work = ROOT / "data/work"
     work.mkdir(exist_ok=True, parents=True)
@@ -54,7 +60,7 @@ def build_region(region, sources):
     monthly = records(daily.groupby(daily.index.str[:7]).sum())
     summary = dict(region=region, first=daily.index[0],last=daily.index[-1],columns=FIELDS,
                    envelope=[f(s["envelope"][i] for s in sources) for i,f in enumerate([min,min,max,max])],
-                   daily=records(daily),monthly=monthly,calibration=calibrate(monthly))
+                   daily=records(daily),monthly=monthly,calibration=calibrate(monthly),overlap_diagnostic=overlap_diagnostic(monthly))
     save_json(output/"summary.json", summary)
     points = pd.concat(samples).sort_values("acq_date",kind="stable")
     overview = []
