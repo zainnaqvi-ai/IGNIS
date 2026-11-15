@@ -1,4 +1,4 @@
-# IGNIS · Fire activity atlas
+git# IGNIS · Fire activity atlas
 
 An independent historical burning-activity workstation for the Lahore and California study rectangles. The static site already contains all generated analytics and offline geographic context. Choose a measure (raw detections or occupied cell-days) independently of sensor (MODIS, S-NPP VIIRS or Integrated). Use Draw area or enter coordinates to select reported centers before aggregation.
 
@@ -57,6 +57,6 @@ In Netlify, import that GitHub repository, select branch `main`, leave the build
 
 ## Data and interpretation
 
-See [data audit and totals](docs/DATA_AUDIT.md), [scientific methods](docs/SCIENCE.md), [static contracts](docs/SCHEMA.md), [challenge alignment](docs/CHALLENGE_ALIGNMENT.md) and [source manifest](config/source_manifest.csv). Recorded totals reflect heterogeneous sampling effort. Same-month charts match calendar day bounds and instrument era. Historical peak rankings are withheld. The interface labels unknown periods and withholds calibrated indices for both regions. The entire site uses about 28.5 MB of generated data, including 18.2 MB of exact point-center indices loaded by region and year only for custom-area analysis. Map partitions load on demand with a maximum of 650 displayed points and separate full counts.
+See [scientific review and acceptance results](docs/REVIEW.md), [data audit and totals](docs/DATA_AUDIT.md), [scientific methods](docs/SCIENCE.md), [static contracts](docs/SCHEMA.md), [challenge alignment](docs/CHALLENGE_ALIGNMENT.md) and [source manifest](config/source_manifest.csv). Recorded totals reflect heterogeneous sampling effort. Same-month charts match calendar day bounds and instrument era. Historical peak rankings are withheld. The interface labels unknown periods and withholds calibrated indices for both regions. The entire site uses about 28.5 MB of generated data, including 18.2 MB of exact point-center indices loaded by region and year for custom rectangles or classification subsets. Map partitions load on demand with a maximum of 650 displayed points and separate full counts.
 
 Fire observations are provided by NASA FIRMS, including standard products and LANCE near-real-time data. See the [FIRMS readme and use disclaimer](https://firms.modaps.eosdis.nasa.gov/download/Readme.txt). Geographic context uses [Natural Earth public-domain 1:50m data](https://www.naturalearthdata.com/about/terms-of-use/). If refreshing that optional context, see the instructions in [the backdrop builder](pipeline/build_backdrop.py). Street tiles are optional and attributed to [OpenStreetMap contributors](https://www.openstreetmap.org/copyright). Leaflet 1.9.4 is distributed under its [BSD license](site/vendor/LEAFLET-LICENSE.txt).

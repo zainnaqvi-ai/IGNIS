@@ -137,7 +137,7 @@ function render(){
   const showValue=(value,s)=>s==="positive_detection"?count(value):s==="platform_not_available"?"Unavailable":"No record";
   const u=metric(total,st.mode,st.measure);
   el("metricLabel").textContent=(st.mode==="integrated"?"Integrated":st.mode)+" "+units(st.measure);
-  el("qualityLabel").textContent=st.measure==="cells"?"MODIS ≥30 · VIIRS nominal/high":"All confidence levels · original rows";
+  el("qualityLabel").textContent=st.measure==="cells"?"MODIS ≥30 · VIIRS nominal/high":"All confidence levels · source rows";
   el("union").textContent=showValue(u,state);el("mraw").textContent=showValue(total[0],coverage(total,"MODIS",start,end));el("vraw").textContent=showValue(total[1],coverage(total,"VIIRS",start,end));
   el("vraw").textContent=end<"2012-01-20"?"Unavailable · starts 2012":el("vraw").textContent;
   el("vraw").title=end<"2012-01-20"?"Not available (sensor record begins 2012)":"Suomi NPP through 2 November 2026";
@@ -149,6 +149,7 @@ function render(){
   el("detailContext").textContent=niceRegion()+" · "+(st.month?"selected month":"month preview");
   el("coverageNote").textContent=era(start,end)+". Detections document activity. Silent dates have unknown coverage. The dates can include partial years. Calibration and anomaly baselines are unavailable for this region. Rectangles select reported point centers before daily grid occupancy is calculated.";
   const advisory=gapWarning(start,end,st.mode);if(advisory)el("coverageNote").textContent+=" "+advisory+" within this interval.";
+  if(st.classification!=="all")el("coverageNote").textContent+=" NRT records have unknown type. An empty classified view can reflect missing type information.";
   const context=st.day?formatDate(st.day):st.month?monthLabel(st.month):formatDate(start)+" – "+formatDate(end);
   el("union").title=el("mraw").title="Recorded within "+context;
   el("metricScope").textContent=niceRegion()+"  /  "+(st.bounds?"Custom area":"Full study area")+"  /  "+context+"  /  "+(st.mode==="integrated"?"Integrated":st.mode)+" "+units(st.measure)+" / "+el("classification").selectedOptions[0].text;
@@ -206,7 +207,7 @@ function method(){
     const det=add(div,"details","");add(det,"summary","Paired months by year");add(det,"p",Object.entries(c.paired_by_year).map(([y,n])=>y+" · "+n).join("  /  "));
     add(div,"h3","Reading the calendar");add(div,"p","Colors follow positive monthly totals within the current date filter at the 20th, 40th, 60th, 77th, 90th and 98th percentiles. Hatching marks unknown days; a slash marks unavailable platforms. A zero with source detections means no retained grid activity. The dashed 2012 row marks S-NPP entry. Partial years carry an asterisk.");
     add(div,"h3","Geographic and temporal support");add(div,"p","Rectangle outlines enclose all supplied point centers. Requested boundaries and complete overpass windows are unknown. Custom areas select original point centers inside or on the rectangle before computing grid occupancy. Map dots are sampled. The map includes public-domain Natural Earth context; optional street tiles are attributed to OpenStreetMap.");
-    add(div,"h3","Historical comparisons");add(div,"p","Seasonal totals describe the selected archive. The same-month chart matches day-of-month bounds and sensor era. Peak rankings are withheld because observation effort is unknown. A descriptive reference median requires archive detections on every matched day from every active selected sensor in the target and five other years, outside flagged MODIS periods. Positive records establish only that detections were recorded. Valid anomaly baselines require five comparable reference years and verified target support. Unknown observation effort precludes those comparisons here.");
+    add(div,"h3","Historical comparisons");add(div,"p","Seasonal totals describe the selected archive. The same-month chart uses the calendar month and visible date bounds, including during daily drilldown. It matches instrument era and the start of Aqua MODIS. Peak rankings are withheld because observation effort is unknown. A descriptive reference median requires archive detections on every matched day from every active selected sensor in the target and five other years, outside flagged MODIS periods. Positive records establish only that detections were recorded. Valid anomaly baselines require five comparable reference years and verified target support. Unknown observation effort precludes those comparisons here.");
     const a=add(div,"a","NASA FIRMS product readme and disclaimer ↗");a.href="https://firms.modaps.eosdis.nasa.gov/download/Readme.txt";
   });
 }
@@ -217,6 +218,7 @@ function audit(){
       const d=add(div,"details","");add(d,"summary",s.sensor+" · "+s.status+" · "+count(s.rows)+" rows");
       add(d,"p",s.zip+" / "+s.member);add(d,"p",s.first+" to "+s.last+" UTC · "+s.values.satellite.join(", ")+" · versions "+s.values.version.join(", "));
       add(d,"p","Retained "+count(s.retained)+" · confidence excluded "+count(s.quality_excluded)+" · duplicates "+s.duplicates+" · invalid "+s.invalid+" · clipped "+s.clipped+". Type values: "+s.values.type.join(", ")+".");
+      add(d,"p","Original row counts by FIRMS type: "+Object.entries(s.raw_type_counts).map(([code,n])=>code+" = "+count(n)).join(" · "));
       add(d,"p","SHA-256 "+s.sha256);
     }
     const a=add(div,"a","Download complete eight-member manifest (JSON)");a.href="data/sources.json";a.download="IGNIS-source-manifest.json";
