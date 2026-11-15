@@ -1,5 +1,7 @@
 # IGNIS — Historical Burning Activity Explorer
 
+**Live website: [https://ignis-fire-atlas.netlify.app/](https://ignis-fire-atlas.netlify.app/)**
+
 A historical burning-activity explorer for **NASA Space Apps Challenge 2026 — Harmonization of MODIS and VIIRS Hot Spots**. MODIS and VIIRS have different sensitivities and observation schedules. IGNIS makes their supplied records explorable on a common grid, while keeping sensor differences visible in its scientific evidence.
 
 The application is a static research demonstrator. It provides **sensor-aware integration**, not a validated sensor-independent fire estimate. Cell-days are neither individual wildfire counts nor burned area. [Challenge assessment](docs/CHALLENGE_ALIGNMENT.md) · [Scientific methods](docs/SCIENCE.md) · [Validation and limitations](docs/REVIEW.md)
@@ -20,6 +22,8 @@ IGNIS joins the longer MODIS record to finer-resolution VIIRS observations on on
 - Download daily/monthly analytics, selected hotspot records for up to 31 inclusive days, or a calendar SVG.
 
 The cream, forest-green and terracotta explorer contains three metrics in matching units. Detailed overlap calculations, calibration failures, source ledgers and the internal alignment score live in this repository. The map shows at most 650 sampled markers; calculations and selected-record exports use the full observations.
+
+**First use of Draw Area:** The first area selection may take longer while your browser downloads the full observation indices for the selected region and years, then calculates the results. Please wait for the calculation message to clear. The browser keeps those indices in memory, so subsequent area edits usually respond faster. A shorter date range reduces the initial workload. Reloading the page or selecting uncached years/another region may require loading again; no server-side processing pipeline is started by drawing.
 
 ## Study areas
 
@@ -158,7 +162,7 @@ The transfer command writes derived diagnostic evidence only; it never installs 
 
 Read [methods](docs/SCIENCE.md), [original matched-date experiments](docs/MATCHED_AGREEMENT.md), [extended transfer validation](docs/TRANSFER_VALIDATION.md), [acceptance results](docs/REVIEW.md) and the [internal challenge rubric](docs/CHALLENGE_ALIGNMENT.md). All attempted coefficients remain unapplied. Complete satellite-observation coverage, physical sensor independence and formal anomaly significance are not established.
 
-The existing GitHub remote/history are preserved. Raw ZIPs, intermediates, screenshots, virtual environments and IDE state remain excluded from Git. Review the diff before committing. After separate publication authorization, Netlify can serve `site/` with no build command using [netlify.toml](netlify.toml). Then smoke-test both regions, AOIs and CSV/SVG downloads at the production URL. This refinement did not push or deploy; production hosting remains unverified.
+The [live IGNIS explorer](https://ignis-fire-atlas.netlify.app/) is hosted on Netlify. The static deployment serves `site/` with no build command, as configured in [netlify.toml](netlify.toml). The recorded browser regression results describe local tests; a complete production interaction test is not claimed here. Raw ZIPs, intermediates, screenshots, virtual environments and IDE state remain excluded from Git. Review changes before committing and preserve the existing Git history.
 
 ## Super Intelligence (SI) Usage Disclosure
 
