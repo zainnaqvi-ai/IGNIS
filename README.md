@@ -157,3 +157,28 @@ The transfer command writes derived diagnostic evidence only; it never installs 
 Read [methods](docs/SCIENCE.md), [original matched-date experiments](docs/MATCHED_AGREEMENT.md), [extended transfer validation](docs/TRANSFER_VALIDATION.md), [acceptance results](docs/REVIEW.md) and the [internal challenge rubric](docs/CHALLENGE_ALIGNMENT.md). All attempted coefficients remain unapplied. Complete satellite-observation coverage, physical sensor independence and formal anomaly significance are not established.
 
 The existing GitHub remote/history are preserved. Raw ZIPs, intermediates, screenshots, virtual environments and IDE state remain excluded from Git. Review the diff before committing. After separate publication authorization, Netlify can serve `site/` with no build command using [netlify.toml](netlify.toml). Then smoke-test both regions, AOIs and CSV/SVG downloads at the production URL. This refinement did not push or deploy; production hosting remains unverified.
+
+## Super Intelligence (SI) Usage Disclosure
+
+Team AIOUS used **OpenAI ChatGPT, GPT-6 Astra, and OpenAI Codex** to assist with the development of IGNIS.
+
+### How SI Tools Were Used
+
+- **Coding and Debugging:** Assisted with Python and JavaScript development, debugging, optimization, and testing.
+- **Data Analysis:** Assisted with statistical calculations, sensor harmonization experiments, calibration evaluation, and validation.
+- **Documentation:** Assisted with technical explanations, scientific reports, and README preparation.
+- **Presentation:** Assisted with presentation content, slide design, and explanatory illustrations.
+
+### Data Authenticity and Scientific Integrity
+
+- All satellite observations originate from **authentic NASA FIRMS MODIS and VIIRS datasets**.
+- No satellite observations were AI-generated, fabricated, or replaced.
+- Scientific calculations were evaluated using reproducible tests and documented validation procedures.
+- Calibration coefficients that failed validation were not applied.
+- AI-generated illustrations, where included, are identified as AI-generated.
+
+### Human Oversight
+
+**Team AIOUS** directed the project's objectives, selected the study regions, reviewed scientific results, and made final implementation and presentation decisions.
+
+SI tools were used as development assistants, not as replacements for authentic NASA data or scientific validation.
