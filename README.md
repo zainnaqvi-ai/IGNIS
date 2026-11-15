@@ -8,7 +8,16 @@ The application is a static research demonstrator. It provides **sensor-aware in
 
 ## NASA Space Apps challenge
 
-The project addresses [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/). The complete official challenge page could not be independently retrieved, including the latest check on 15 November 2026 (HTTP 502). The objective assessment below uses the user's supplied structured challenge summary, **not verified verbatim challenge text**. That summary identifies a comparable MODIS–VIIRS historical record and an interactive burning-activity calendar as central objectives; particular map styles, median displays and CSV formats are suggested features. Product definitions are separately supported by NASA FIRMS documentation.
+IGNIS addresses [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/). The challenge is to connect the long MODIS hotspot record with the continuity and finer detail of VIIRS, helping users understand where and when burning has been recorded from the early 2000s to the present.
+
+The challenge has two main objectives:
+
+1. **Harmonize MODIS and VIIRS observations** into a consistent activity record, so differences in sensor resolution, sensitivity and observation schedules do not distort historical patterns, trends or unusual periods.
+2. **Build a web-based burning-activity calendar** where users can select an area and date range, explore historical activity, and download analytics and visualizations.
+
+Suggested features include drawing an area on a map or entering coordinates, accessible colour ramps, comparisons with multi-year reference values, and downloadable hotspot CSVs. These support the main objectives; they are not all mandatory features.
+
+IGNIS provides the interactive calendar, geographic selection and downloads, with separate raw-detection and cell-day views. Its common-grid integration is implemented; fully sensor-independent comparability remains unvalidated. The implementation table below distinguishes completed features from that remaining scientific objective.
 
 ## Our solution
 
